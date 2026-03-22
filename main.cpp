@@ -5,6 +5,18 @@
 #include "src/load_mesh.h"
 
 
+namespace {
+
+void printMeshDetails(const Mesh::TriMesh& mesh) {
+    std::cout << "Mesh has " << mesh.numTriangles() << " triangles and " << mesh.numVertices() << " vertices"
+              << std::endl;
+    std::cout << "Mesh contains " << mesh.getTriangles().size() << " triangles" << std::endl;
+    std::cout << "Mesh contains " << mesh.getVertices().size() << " vertices" << std::endl;
+}
+
+} // namespace
+
+
 int main(int argc, char* argv[]) {
     cxxopts::Options options(argv[0], "Learn Mesh");
     options.add_options()("f, file", "Input file", cxxopts::value<std::string>())("h,help", "Print usage information");
@@ -24,8 +36,7 @@ int main(int argc, char* argv[]) {
                   << std::endl;
         return 1;
     }
-    std::cout << "Loaded " << loadMeshResult->numTriangles() << " triangles" << std::endl;
-    std::cout << "Loaded " << loadMeshResult->numVertices() << " vertices" << std::endl;
+    printMeshDetails(loadMeshResult.value());
     std::cout << "Done" << std::endl;
     return 0;
 }
