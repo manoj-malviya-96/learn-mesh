@@ -12,6 +12,11 @@ add_executable(learn_mesh
         src/load_mesh.cpp
         src/load_mesh.h
         src/tri_mesh.h
+        src/half_edge.cpp
+        src/half_edge.h
+        src/simplify_mesh.h
+        src/simplify_mesh.cpp
+        src/mat4.h
 )
 
 target_link_libraries(learn_mesh PRIVATE cxxopts::cxxopts)

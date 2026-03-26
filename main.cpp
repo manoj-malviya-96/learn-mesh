@@ -2,6 +2,7 @@
 
 
 #include "cxxopts.hpp"
+#include "src/half_edge.h"
 #include "src/load_mesh.h"
 
 
@@ -37,6 +38,9 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     printMeshDetails(loadMeshResult.value());
+
+    const auto halfEdgeMesh = Mesh::HalfEdgeMesh(loadMeshResult.value());
+
     std::cout << "Done" << std::endl;
     return 0;
 }
