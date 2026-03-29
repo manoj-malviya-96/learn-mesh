@@ -94,9 +94,8 @@ Boundary edges — twin = InvalidIndex are valid; it means the mesh has a border
 ***/
 
 HalfEdgeMesh::HalfEdgeMesh(const TriMesh& triMesh) {
-    if (triMesh.numTriangles() == 0) {
-        throw std::runtime_error("Mesh must have at least one triangle");
-    }
+    if (triMesh.empty())
+        return;
     this->m_triangles.resize(triMesh.numTriangles());
     this->m_halfEdges.reserve(triMesh.numVertices());
 
