@@ -21,7 +21,7 @@ struct HalfEdge {
 };
 
 struct HalfEdgeTriangle {
-    Index halfEdge ;
+    Index halfEdge;
 };
 
 class HalfEdgeMesh {

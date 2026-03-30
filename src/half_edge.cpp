@@ -32,15 +32,15 @@ bool buildHalfEdgesForTriangle(
     EdgeMap& edgeMap
 ) {
     const Index lastHalfEdge = halfEdges.size();
-    for (Index e = 0; e < NumVerticesPerTriangle; ++e) {
+    for (Index e = 0; e < NumEdgesOrVerticesInATriangle; ++e) {
         const Index src = tri[e];
-        const Index dst = tri[(e + 1) % NumVerticesPerTriangle];
+        const Index dst = tri[(e + 1) % NumEdgesOrVerticesInATriangle];
         const Index newHalfEdge = lastHalfEdge + e;
 
         halfEdges[newHalfEdge] = HalfEdge{
             .targetVertex = dst,
             .leftFace = fi,
-            .nextHalfEdge = lastHalfEdge + (e + 1) % NumVerticesPerTriangle,
+            .nextHalfEdge = lastHalfEdge + (e + 1) % NumEdgesOrVerticesInATriangle,
         };
         vertices[src].outHalfEdge = newHalfEdge;
         // Check if an edge already exists in the map, which would indicate a non-manifold edge. We should surface this
@@ -55,11 +55,11 @@ bool buildHalfEdgesForTriangle(
 void stitchTwins(const TriMesh& triMesh, std::vector<HalfEdge>& halfEdges, const EdgeMap& edgeMap) {
     for (Index i = 0; i < triMesh.numTriangles(); ++i) {
         const Triangle& tri = triMesh.getTriangle(i);
-        const Index heBase = i * NumVerticesPerTriangle;
+        const Index heBase = i * NumEdgesOrVerticesInATriangle;
 
-        for (Index e = 0; e < NumVerticesPerTriangle; ++e) {
+        for (Index e = 0; e < NumEdgesOrVerticesInATriangle; ++e) {
             const Index src = tri[e];
-            const Index dst = tri[(e + 1) % NumVerticesPerTriangle];
+            const Index dst = tri[(e + 1) % NumEdgesOrVerticesInATriangle];
             const Index heIdx = heBase + e;
 
             if (auto it = edgeMap.find(DirectedEdge{dst, src}); it != edgeMap.end())
@@ -96,7 +96,7 @@ HalfEdgeMesh::HalfEdgeMesh(const TriMesh& triMesh) {
     if (triMesh.empty())
         return;
     this->m_triangles.reserve(triMesh.numTriangles());
-    this->m_halfEdges.reserve(triMesh.numVertices());
+    this->m_halfEdges.reserve(3 * triMesh.numTriangles());
 
     // Simply copy
     this->m_vertices = std::invoke([&triMesh] {
