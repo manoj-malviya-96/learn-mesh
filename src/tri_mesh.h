@@ -6,10 +6,9 @@
 namespace Mesh {
 
 using Index = std::size_t;
-constexpr Index InvalidIndex = std::numeric_limits<Index>::max();
-constexpr Index NumVerticesPerTriangle = 3;
-using Vertex = std::array<float, NumVerticesPerTriangle>;
-using Triangle = std::array<Index, NumVerticesPerTriangle>;
+constexpr Index NumEdgesOrVerticesInATriangle = 3;
+using Vertex = std::array<float, NumEdgesOrVerticesInATriangle>;
+using Triangle = std::array<Index, NumEdgesOrVerticesInATriangle>;
 
 class TriMesh {
 public:
@@ -20,7 +19,7 @@ public:
 
     void reserve(const std::size_t n) {
         m_vertices.reserve(n);
-        m_triangles.reserve(NumVerticesPerTriangle * n);
+        m_triangles.reserve(NumEdgesOrVerticesInATriangle * n);
     }
 
     [[nodiscard]] bool empty() const { return m_triangles.empty() or m_vertices.empty(); }

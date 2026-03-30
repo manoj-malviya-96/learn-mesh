@@ -11,8 +11,8 @@ namespace Mesh {
 
 namespace {
 
-constexpr std::size_t NumSharedNeighborsOnInteriorEdge = NumVerticesPerTriangle - 1;
-constexpr std::size_t NumSharedNeighborsOnBoundaryEdge = NumVerticesPerTriangle - 2;
+constexpr std::size_t NumSharedNeighborsOnInteriorEdge = NumEdgesOrVerticesInATriangle - 1;
+constexpr std::size_t NumSharedNeighborsOnBoundaryEdge = NumEdgesOrVerticesInATriangle - 2;
 
 // Source vertex of a half-edge: target of its twin, or walk prev
 // prev(he) = next(next(he))  in a triangle
@@ -290,8 +290,8 @@ void simplifyMesh(HalfEdgeMesh& mesh, const SimplifyOptions& options) {
             continue;
 
         const Index trianglesRemoved = mesh.halfEdges()[halfEdge].twinHalfEdge.has_value()
-                                         ? NumVerticesPerTriangle - 1
-                                         : NumVerticesPerTriangle - 2;
+                                         ? NumEdgesOrVerticesInATriangle - 1
+                                         : NumEdgesOrVerticesInATriangle - 2;
         collapseEdge(mesh, halfEdge, candidate.optimalPos, quadrics, deadVertex, deadFace, deadHE);
         activeTriangles -= trianglesRemoved;
 
