@@ -24,7 +24,7 @@ struct DirectedEdgeHash {
 
 using EdgeMap = std::unordered_map<DirectedEdge, Index, DirectedEdgeHash>;
 
-void buildHalfEdgesForTriangle(
+bool buildHalfEdgesForTriangle(
     const Index fi,
     const Triangle& tri,
     std::vector<HalfEdge>& halfEdges,
@@ -32,8 +32,6 @@ void buildHalfEdgesForTriangle(
     EdgeMap& edgeMap
 ) {
     const Index lastHalfEdge = halfEdges.size();
-    halfEdges.resize(lastHalfEdge + NumVerticesPerTriangle);
-
     for (Index e = 0; e < NumVerticesPerTriangle; ++e) {
         const Index src = tri[e];
         const Index dst = tri[(e + 1) % NumVerticesPerTriangle];
@@ -45,11 +43,13 @@ void buildHalfEdgesForTriangle(
             .nextHalfEdge = lastHalfEdge + (e + 1) % NumVerticesPerTriangle,
         };
         vertices[src].outHalfEdge = newHalfEdge;
-        // Check if an edge already exists in the map, which would indicate a non-manifold edge. We should surface this as an error.
+        // Check if an edge already exists in the map, which would indicate a non-manifold edge. We should surface this
+        // as an error.
         if (auto [it, inserted] = edgeMap.emplace(DirectedEdge{src, dst}, newHalfEdge); !inserted) {
-            throw std::runtime_error("Duplicate edge");
+            return false;
         }
     }
+    return true;
 }
 
 void stitchTwins(const TriMesh& triMesh, std::vector<HalfEdge>& halfEdges, const EdgeMap& edgeMap) {
@@ -90,15 +90,15 @@ twin = InvalidIndex  ← boundary edge
 A few edge cases worth handling explicitly:
 Non-manifold edges — (a→b) appears more than once. That's a corrupt mesh, we should surface it as an error.
 Boundary edges — twin = InvalidIndex are valid; it means the mesh has a border.
-
 ***/
 
 HalfEdgeMesh::HalfEdgeMesh(const TriMesh& triMesh) {
     if (triMesh.empty())
         return;
-    this->m_triangles.resize(triMesh.numTriangles());
+    this->m_triangles.reserve(triMesh.numTriangles());
     this->m_halfEdges.reserve(triMesh.numVertices());
 
+    // Simply copy
     this->m_vertices = std::invoke([&triMesh] {
         std::vector<HalfEdgeVertex> vertices(triMesh.numVertices());
         for (std::size_t i = 0; i < triMesh.numVertices(); ++i)
@@ -110,7 +110,10 @@ HalfEdgeMesh::HalfEdgeMesh(const TriMesh& triMesh) {
     edgeMap.reserve(triMesh.numVertices());
     for (Index i = 0; i < triMesh.numTriangles(); ++i) {
         this->m_triangles[i].halfEdge = m_halfEdges.size();
-        buildHalfEdgesForTriangle(i, triMesh.getTriangle(i), m_halfEdges, m_vertices, edgeMap);
+        if (const auto check = buildHalfEdgesForTriangle(i, triMesh.getTriangle(i), m_halfEdges, m_vertices, edgeMap);
+            !check) {
+            throw std::runtime_error("Non-manifold edge detected in input mesh");
+        }
     }
     stitchTwins(triMesh, m_halfEdges, edgeMap);
 }

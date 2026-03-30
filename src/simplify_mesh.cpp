@@ -11,6 +11,9 @@ namespace Mesh {
 
 namespace {
 
+constexpr std::size_t NumSharedNeighborsOnInteriorEdge = NumVerticesPerTriangle - 1;
+constexpr std::size_t NumSharedNeighborsOnBoundaryEdge = NumVerticesPerTriangle - 2;
+
 // Source vertex of a half-edge: target of its twin, or walk prev
 // prev(he) = next(next(he))  in a triangle
 Index prevHE(const HalfEdgeMesh& mesh, const Index he) {
@@ -19,8 +22,7 @@ Index prevHE(const HalfEdgeMesh& mesh, const Index he) {
 
 Index srcVertex(const HalfEdgeMesh& mesh, const Index he) { return mesh.halfEdges()[prevHE(mesh, he)].targetVertex; }
 
-// Collect all half-edges outgoing from vertex v by walking the one-ring CCW.
-// Stops at boundary (twin == InvalidIndex) or when we've looped back to start.
+
 std::vector<Index> outgoingHalfEdges(const HalfEdgeMesh& mesh, const Index v) {
     std::vector<Index> result;
     const Index start = mesh.vertices()[v].outHalfEdge;
@@ -32,8 +34,11 @@ std::vector<Index> outgoingHalfEdges(const HalfEdgeMesh& mesh, const Index v) {
         result.push_back(he);
         // Step CCW: prev → twin
         const Index prev = prevHE(mesh, he);
-        he = mesh.halfEdges()[prev].twinHalfEdge;
-    } while (he != InvalidIndex && he != start);
+        const auto twin = mesh.halfEdges()[prev].twinHalfEdge;
+        if (!twin.has_value())
+            break;
+        he = *twin;
+    } while (he != start);
 
     return result;
 }
@@ -110,8 +115,8 @@ bool linkCondition(const HalfEdgeMesh& mesh, const Index he) {
         if (ringV.contains(nb))
             ++shared;
 
-    const bool hasTwin = mesh.halfEdges()[he].twinHalfEdge != InvalidIndex;
-    const std::size_t expectedShared = hasTwin ? 2 : 1;
+    const bool hasTwin = mesh.halfEdges()[he].twinHalfEdge.has_value();
+    const std::size_t expectedShared = hasTwin ? NumSharedNeighborsOnInteriorEdge : NumSharedNeighborsOnBoundaryEdge;
 
     return shared == expectedShared;
 }
@@ -156,7 +161,7 @@ void collapseEdge(
     auto& halfEdges = mesh.halfEdges();
     auto& vertices = mesh.vertices();
 
-    const Index twin = halfEdges[halfEdge].twinHalfEdge;
+    const auto twin = halfEdges[halfEdge].twinHalfEdge;
     const Index u = srcVertex(mesh, halfEdge);
     const Index v = halfEdges[halfEdge].targetVertex;
 
@@ -180,12 +185,12 @@ void collapseEdge(
         const Index prev = prevHE(mesh, halfEdge);
 
         // Relink twins of the side edges to each other (bypass the face)
-        const Index nextTwin = halfEdges[next].twinHalfEdge;
-        const Index prevTwin = halfEdges[prev].twinHalfEdge;
-        if (nextTwin != InvalidIndex)
-            halfEdges[nextTwin].twinHalfEdge = prevTwin;
-        if (prevTwin != InvalidIndex)
-            halfEdges[prevTwin].twinHalfEdge = nextTwin;
+        const auto nextTwin = halfEdges[next].twinHalfEdge;
+        const auto prevTwin = halfEdges[prev].twinHalfEdge;
+        if (nextTwin.has_value())
+            halfEdges[*nextTwin].twinHalfEdge = prevTwin;
+        if (prevTwin.has_value())
+            halfEdges[*prevTwin].twinHalfEdge = nextTwin;
 
         deadHE[halfEdge] = deadHE[next] = deadHE[prev] = true;
         if (fi != InvalidIndex)
@@ -193,19 +198,20 @@ void collapseEdge(
     }
 
     // ── Remove the left face of twin (if it exists)
-    if (twin != InvalidIndex) {
-        const Index fi = halfEdges[twin].leftFace;
-        const Index next = halfEdges[twin].nextHalfEdge;
-        const Index prev = prevHE(mesh, twin);
+    if (twin.has_value()) {
+        const Index twinIndex = *twin;
+        const Index fi = halfEdges[twinIndex].leftFace;
+        const Index next = halfEdges[twinIndex].nextHalfEdge;
+        const Index prev = prevHE(mesh, twinIndex);
 
-        const Index nextTwin = halfEdges[next].twinHalfEdge;
-        const Index prevTwin = halfEdges[prev].twinHalfEdge;
-        if (nextTwin != InvalidIndex)
-            halfEdges[nextTwin].twinHalfEdge = prevTwin;
-        if (prevTwin != InvalidIndex)
-            halfEdges[prevTwin].twinHalfEdge = nextTwin;
+        const auto nextTwin = halfEdges[next].twinHalfEdge;
+        const auto prevTwin = halfEdges[prev].twinHalfEdge;
+        if (nextTwin.has_value())
+            halfEdges[*nextTwin].twinHalfEdge = prevTwin;
+        if (prevTwin.has_value())
+            halfEdges[*prevTwin].twinHalfEdge = nextTwin;
 
-        deadHE[twin] = deadHE[next] = deadHE[prev] = true;
+        deadHE[twinIndex] = deadHE[next] = deadHE[prev] = true;
         if (fi != InvalidIndex)
             deadFace[fi] = true;
     }
@@ -259,17 +265,17 @@ void simplifyMesh(HalfEdgeMesh& mesh, const SimplifyOptions& options) {
 
 
     // Building Queue - One candidate per unique undirected edge (he with index < twin index)
-    MinHeap priority_queue;
+    MinHeap collapseQueue;
     for (Index he = 0; he < numHalfEdges; ++he) {
-        const Index twin = mesh.halfEdges()[he].twinHalfEdge;
-        if (twin == InvalidIndex || he < twin) // each undirected edge once
-            priority_queue.push(evaluateCollapse(mesh, he, quadrics));
+        if (const auto twin = mesh.halfEdges()[he].twinHalfEdge;
+            !twin.has_value() || he < *twin) // each undirected edge once
+            collapseQueue.push(evaluateCollapse(mesh, he, quadrics));
     }
 
     Index activeTriangles = numTriangles;
-    while (!priority_queue.empty() && activeTriangles > options.targetTriangles) {
-        const CollapseCandidate candidate = priority_queue.top();
-        priority_queue.pop();
+    while (!collapseQueue.empty() && activeTriangles > options.targetTriangles) {
+        const CollapseCandidate candidate = collapseQueue.top();
+        collapseQueue.pop();
 
         const Index halfEdge = candidate.halfEdge;
 
@@ -283,7 +289,9 @@ void simplifyMesh(HalfEdgeMesh& mesh, const SimplifyOptions& options) {
         if (!linkCondition(mesh, halfEdge))
             continue;
 
-        const Index trianglesRemoved = (mesh.halfEdges()[halfEdge].twinHalfEdge != InvalidIndex) ? 2 : 1;
+        const Index trianglesRemoved = mesh.halfEdges()[halfEdge].twinHalfEdge.has_value()
+                                         ? NumVerticesPerTriangle - 1
+                                         : NumVerticesPerTriangle - 2;
         collapseEdge(mesh, halfEdge, candidate.optimalPos, quadrics, deadVertex, deadFace, deadHE);
         activeTriangles -= trianglesRemoved;
 
@@ -291,7 +299,7 @@ void simplifyMesh(HalfEdgeMesh& mesh, const SimplifyOptions& options) {
         const Index survivingVertex = mesh.halfEdges()[halfEdge].targetVertex;
         for (const Index outHalfEdge : outgoingHalfEdges(mesh, survivingVertex)) {
             if (!deadHE[outHalfEdge])
-                priority_queue.push(evaluateCollapse(mesh, outHalfEdge, quadrics));
+                collapseQueue.push(evaluateCollapse(mesh, outHalfEdge, quadrics));
         }
     }
 }

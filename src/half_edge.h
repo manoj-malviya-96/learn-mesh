@@ -1,32 +1,36 @@
 #pragma once
 #include <array>
+#include <optional>
 #include <vector>
 #include "tri_mesh.h"
 
 
 namespace Mesh {
 
-
 struct HalfEdgeVertex {
-    Vertex vertex{};
-    Index outHalfEdge = InvalidIndex; // Any outward Edge From the vertex.
+    Vertex vertex;
+    Index outHalfEdge;
 };
 
 struct HalfEdge {
-    Index targetVertex = InvalidIndex; // Vertex at the end of this half-edge, where it's coming out from
-    Index leftFace = InvalidIndex;     // Left Face
-    Index nextHalfEdge = InvalidIndex; // Right Half edge next
-    Index twinHalfEdge = InvalidIndex; // The half-edge in the opposite direction
+    Index targetVertex;
+    Index leftFace;
+    Index nextHalfEdge;
+    Index prevHalfEdge;
+    std::optional<Index> twinHalfEdge;
 };
 
 struct HalfEdgeTriangle {
-    Index halfEdge = InvalidIndex; // Any bounding HalfEdge
+    Index halfEdge ;
 };
 
 class HalfEdgeMesh {
 public:
     HalfEdgeMesh() = default;
     explicit HalfEdgeMesh(const TriMesh& triMesh);
+
+    [[nodiscard]] std::size_t numVertices() const { return m_vertices.size(); }
+    [[nodiscard]] std::size_t numTriangles() const { return m_triangles.size(); }
 
     [[nodiscard]] std::vector<HalfEdgeVertex>& vertices() { return m_vertices; }
     [[nodiscard]] const std::vector<HalfEdgeVertex>& vertices() const { return m_vertices; }

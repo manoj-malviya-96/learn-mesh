@@ -4,6 +4,7 @@
 #include "cxxopts.hpp"
 #include "src/half_edge.h"
 #include "src/load_mesh.h"
+#include "src/simplify_mesh.h"
 
 
 namespace {
@@ -39,7 +40,15 @@ int main(int argc, char* argv[]) {
     }
     printMeshDetails(loadMeshResult.value());
 
-    const auto halfEdgeMesh = Mesh::HalfEdgeMesh(loadMeshResult.value());
+    auto halfEdgeMesh = Mesh::HalfEdgeMesh(loadMeshResult.value());
+    Mesh::simplifyMesh(halfEdgeMesh, {
+        .targetTriangles = 10000,
+        .maxError = 1e-3,
+    });
+
+    std::cout << "Simplified mesh has " << halfEdgeMesh.numTriangles() << " triangles and " << halfEdgeMesh.numVertices() << " vertices"
+              << std::endl;
+
 
     std::cout << "Done" << std::endl;
     return 0;
