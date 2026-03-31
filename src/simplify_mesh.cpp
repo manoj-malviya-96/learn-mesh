@@ -166,7 +166,8 @@ void collapseEdge(
     const Index v = halfEdges[halfEdge].targetVertex;
 
     // ── Move v to optimal position ─────────────────────────────────────
-    vertices[v].vertex = {static_cast<float>(optimalPos.x), static_cast<float>(optimalPos.y), static_cast<float>(optimalPos.z)
+    vertices[v].vertex = {
+        static_cast<float>(optimalPos.x), static_cast<float>(optimalPos.y), static_cast<float>(optimalPos.z)
     };
     quadrics[v] = quadrics[u] + quadrics[v];
 
@@ -226,8 +227,7 @@ void collapseEdge(
     }
 }
 
-using MinHeap =
-    std::priority_queue<CollapseCandidate, std::vector<CollapseCandidate>, std::greater<>>;
+using MinHeap = std::priority_queue<CollapseCandidate, std::vector<CollapseCandidate>, std::greater<>>;
 
 } // namespace
 
@@ -289,8 +289,8 @@ void simplifyMesh(HalfEdgeMesh& mesh, const SimplifyOptions& options) {
             continue;
 
         const Index trianglesRemoved = mesh.halfEdges()[halfEdge].twinHalfEdge.has_value()
-                                         ? NumEdgesOrVerticesInATriangle - 1
-                                         : NumEdgesOrVerticesInATriangle - 2;
+            ? NumEdgesOrVerticesInATriangle - 1
+            : NumEdgesOrVerticesInATriangle - 2;
         collapseEdge(mesh, halfEdge, candidate.optimalPos, quadrics, deadVertex, deadFace, deadHE);
         activeTriangles -= trianglesRemoved;
 
