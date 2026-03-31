@@ -1,5 +1,4 @@
 #include "half_edge.h"
-
 #include <unordered_map>
 
 
@@ -16,9 +15,7 @@ struct DirectedEdge {
 
 struct DirectedEdgeHash {
     [[nodiscard]] std::size_t operator()(const DirectedEdge& edge) const {
-        const std::size_t h1 = std::hash<Index>{}(edge.src);
-        const std::size_t h2 = std::hash<Index>{}(edge.dst);
-        return h1 ^ (h2 + 0x9e3779b9 + (h1 << 6) + (h1 >> 2));
+        return std::hash<Index>{}(edge.src) ^ (std::hash<Index>{}(edge.dst) << 1);
     }
 };
 
@@ -116,6 +113,21 @@ HalfEdgeMesh::HalfEdgeMesh(const TriMesh& triMesh) {
         }
     }
     stitchTwins(triMesh, m_halfEdges, edgeMap);
+}
+TriMesh HalfEdgeMesh::triMesh() const {
+    TriMesh mesh;
+    mesh.reserve(m_vertices.size());
+
+    for (const auto& [vertex, _] : m_vertices) {
+        mesh.addVertex(vertex);
+    }
+
+    for (const auto& tri : m_triangles) {
+        const auto& he0 = m_halfEdges[tri.halfEdge];
+        const auto& he1 = m_halfEdges[he0.nextHalfEdge];
+        const auto& he2 = m_halfEdges[he1.nextHalfEdge];
+    }
+    return mesh;
 }
 
 

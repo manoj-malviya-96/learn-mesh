@@ -17,9 +17,9 @@ public:
     [[nodiscard]] const std::vector<Vertex>& getVertices() const { return m_vertices; }
     [[nodiscard]] const std::vector<Triangle>& getTriangles() const { return m_triangles; }
 
-    void reserve(const std::size_t n) {
-        m_vertices.reserve(n);
-        m_triangles.reserve(NumEdgesOrVerticesInATriangle * n);
+    void reserve(const std::size_t numVertices) {
+        m_vertices.reserve(numVertices);
+        m_triangles.reserve(NumEdgesOrVerticesInATriangle * numVertices);
     }
 
     [[nodiscard]] bool empty() const { return m_triangles.empty() or m_vertices.empty(); }
@@ -29,9 +29,8 @@ public:
     [[nodiscard]] Vertex getVertex(const Index index) const { return m_vertices[index]; }
     [[nodiscard]] Triangle getTriangle(const Index index) const { return m_triangles[index]; }
 
-    void addTriangle(const Triangle& tri) { m_triangles.push_back(tri); }
-    void addVertex(const Vertex& v) { m_vertices.push_back(v); }
-
+    void addTriangle(const Triangle& tri) { m_triangles.emplace_back(tri); }
+    void addVertex(const Vertex& v) { m_vertices.emplace_back(v); }
 
 private:
     std::vector<Vertex> m_vertices;

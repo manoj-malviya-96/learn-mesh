@@ -6,8 +6,8 @@
 namespace Mesh {
 
 struct SimplifyOptions {
-    std::size_t targetTriangles = 0; // Stop when the triangle count reaches this
-    double maxError = 1e-2;   // Also stop if the collapse cost exceeds this
+    double reduceFactor = 0.5; // Target fraction of original triangles (e.g., 0.5 for 50%)
+    double maxError = 1e-2;    // Also stop if the collapse cost exceeds this
 };
 
 /// Simplify a HalfEdgeMesh in-place using Quadric Error Metrics.

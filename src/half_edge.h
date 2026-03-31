@@ -39,6 +39,9 @@ public:
     [[nodiscard]] std::vector<HalfEdgeTriangle>& triangles() { return m_triangles; }
     [[nodiscard]] const std::vector<HalfEdgeTriangle>& triangles() const { return m_triangles; }
 
+
+    [[nodiscard]] TriMesh triMesh() const;
+
 private:
     std::vector<HalfEdgeVertex> m_vertices;
     std::vector<HalfEdge> m_halfEdges;

@@ -74,7 +74,7 @@ Mat4 quadricForTriangle(const HalfEdgeMesh& mesh, const Index he) {
     const Vec3 p2 = toVec3(v2);
 
     // Normal = (p1-p0) × (p2-p0)
-    Vec3 e1{p1.x - p0.x, p1.y - p0.y, p1.z - p0.z};
+    const Vec3 e1{p1.x - p0.x, p1.y - p0.y, p1.z - p0.z};
     Vec3 e2{p2.x - p0.x, p2.y - p0.y, p2.z - p0.z};
     Vec3 n{e1.y * e2.z - e1.z * e2.y, e1.z * e2.x - e1.x * e2.z, e1.x * e2.y - e1.y * e2.x};
     n = n.normalised();
@@ -173,8 +173,7 @@ void collapseEdge(
     // ── Retarget all half-edges pointing TO u → point to v instead ─────
     for (const Index outHE : outgoingHalfEdges(mesh, u)) {
         // The half-edge coming INTO u is prev(outHE), its target is u
-        const Index inHE = prevHE(mesh, outHE);
-        if (halfEdges[inHE].targetVertex == u)
+        if (const Index inHE = prevHE(mesh, outHE); halfEdges[inHE].targetVertex == u)
             halfEdges[inHE].targetVertex = v;
     }
 
