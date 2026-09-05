@@ -1,0 +1,135 @@
+#include "half_edge.h"
+#include <unordered_map>
+
+
+namespace Mesh {
+
+namespace {
+
+struct DirectedEdge {
+    Index src;
+    Index dst;
+
+    [[nodiscard]] bool operator==(const DirectedEdge& other) const = default;
+};
+
+struct DirectedEdgeHash {
+    [[nodiscard]] std::size_t operator()(const DirectedEdge& edge) const {
+        return std::hash<Index>{}(edge.src) ^ (std::hash<Index>{}(edge.dst) << 1);
+    }
+};
+
+using EdgeMap = std::unordered_map<DirectedEdge, Index, DirectedEdgeHash>;
+
+bool buildHalfEdgesForTriangle(
+    const Index fi,
+    const Triangle& tri,
+    std::vector<HalfEdge>& halfEdges,
+    std::vector<HalfEdgeVertex>& vertices,
+    EdgeMap& edgeMap
+) {
+    const Index heBase = fi * NumEdgesOrVerticesInATriangle;
+    for (Index e = 0; e < NumEdgesOrVerticesInATriangle; ++e) {
+        const Index src = tri[e];
+        const Index dst = tri[(e + 1) % NumEdgesOrVerticesInATriangle];
+        const Index newHalfEdge = heBase + e;
+
+        halfEdges[newHalfEdge] = HalfEdge{
+            .targetVertex = dst,
+            .leftFace = fi,
+            .nextHalfEdge = heBase + (e + 1) % NumEdgesOrVerticesInATriangle,
+        };
+        vertices[src].outHalfEdge = newHalfEdge;
+        // Check if an edge already exists in the map, which would indicate a non-manifold edge. We should surface this
+        // as an error.
+        if (auto [it, inserted] = edgeMap.emplace(DirectedEdge{src, dst}, newHalfEdge); !inserted) {
+            return false;
+        }
+    }
+    return true;
+}
+
+void stitchTwins(const TriMesh& triMesh, std::vector<HalfEdge>& halfEdges, const EdgeMap& edgeMap) {
+    for (Index i = 0; i < triMesh.numTriangles(); ++i) {
+        const Triangle& tri = triMesh.getTriangle(i);
+        const Index heBase = i * NumEdgesOrVerticesInATriangle;
+
+        for (Index e = 0; e < NumEdgesOrVerticesInATriangle; ++e) {
+            const Index src = tri[e];
+            const Index dst = tri[(e + 1) % NumEdgesOrVerticesInATriangle];
+            const Index heIdx = heBase + e;
+
+            if (auto it = edgeMap.find(DirectedEdge{dst, src}); it != edgeMap.end())
+                halfEdges[heIdx].twinHalfEdge = it->second;
+        }
+    }
+}
+
+
+} // namespace
+
+/***
+
+For each triangle i with verts (a, b, c):
+he0 = a→b,  he1 = b→c,  he2 = c→a
+he0.next = he1,  he1.next = he2,  he2.next = he0
+he0.face = he1.face = he2.face = i
+triangle[i].halfEdge = he0
+edgeMap[(a,b)] = he0,  [(b,c)] = he1,  [(c,a)] = he2
+
+Second pass — twin stitching:
+for each (src→dst, heIdx) in edgeMap:
+if edgeMap contains (dst→src):
+he[heIdx].twin = edgeMap[(dst,src)]
+else:
+twin = InvalidIndex  ← boundary edge
+
+A few edge cases worth handling explicitly:
+Non-manifold edges — (a→b) appears more than once. That's a corrupt mesh, we should surface it as an error.
+Boundary edges — twin = InvalidIndex are valid; it means the mesh has a border.
+***/
+
+HalfEdgeMesh::HalfEdgeMesh(const TriMesh& triMesh) {
+    if (triMesh.empty())
+        return;
+    this->m_triangles.resize(triMesh.numTriangles());
+    this->m_halfEdges.resize(NumEdgesOrVerticesInATriangle * triMesh.numTriangles());
+
+    // Simply copy
+    this->m_vertices = std::invoke([&triMesh] {
+        std::vector<HalfEdgeVertex> vertices(triMesh.numVertices());
+        for (std::size_t i = 0; i < triMesh.numVertices(); ++i)
+            vertices[i].vertex = triMesh.getVertex(i);
+        return vertices;
+    });
+
+    EdgeMap edgeMap;
+    edgeMap.reserve(triMesh.numVertices());
+    for (Index i = 0; i < triMesh.numTriangles(); ++i) {
+        this->m_triangles[i].halfEdge = i * NumEdgesOrVerticesInATriangle;
+        if (const auto check = buildHalfEdgesForTriangle(i, triMesh.getTriangle(i), m_halfEdges, m_vertices, edgeMap);
+            !check) {
+            throw std::runtime_error("Non-manifold edge detected in input mesh");
+        }
+    }
+    stitchTwins(triMesh, m_halfEdges, edgeMap);
+}
+TriMesh HalfEdgeMesh::triMesh() const {
+    TriMesh mesh;
+    mesh.reserve(m_vertices.size());
+
+    for (const auto& [vertex, _] : m_vertices) {
+        mesh.addVertex(vertex);
+    }
+
+    for (const auto& tri : m_triangles) {
+        const auto& he0 = m_halfEdges[tri.halfEdge];
+        const auto& he1 = m_halfEdges[he0.nextHalfEdge];
+        const auto& he2 = m_halfEdges[he1.nextHalfEdge];
+        mesh.addTriangle({he0.targetVertex, he1.targetVertex, he2.targetVertex});
+    }
+    return mesh;
+}
+
+
+} // namespace Mesh
