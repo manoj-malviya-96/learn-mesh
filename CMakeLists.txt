@@ -17,6 +17,8 @@ add_executable(learn_mesh
         src/simplify_mesh.h
         src/simplify_mesh.cpp
         src/mat4.h
+        src/mesh_operations.h
+        src/mesh_operations.cpp
 )
 
 target_link_libraries(learn_mesh PRIVATE cxxopts::cxxopts)

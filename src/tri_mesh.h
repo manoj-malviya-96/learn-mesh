@@ -17,6 +17,7 @@ public:
 
     [[nodiscard]] const std::vector<Vertex>& getVertices() const { return m_vertices; }
     [[nodiscard]] const std::vector<Triangle>& getTriangles() const { return m_triangles; }
+    [[nodiscard]] std::vector<Triangle>& triangles() { return m_triangles; }
 
     void reserve(const std::size_t numVertices) {
         m_vertices.reserve(numVertices);

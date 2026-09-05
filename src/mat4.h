@@ -19,6 +19,10 @@ struct Vec3 {
         const double len = length();
         return len > 1e-12 ? Vec3{x / len, y / len, z / len} : Vec3{};
     }
+    [[nodiscard]] Vec3 operator-(const Vec3& o) const { return {x - o.x, y - o.y, z - o.z}; }
+    [[nodiscard]] Vec3 cross(const Vec3& o) const {
+        return {y * o.z - z * o.y, z * o.x - x * o.z, x * o.y - y * o.x};
+    }
 };
 
 /**
