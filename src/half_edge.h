@@ -9,14 +9,14 @@ namespace Mesh {
 
 struct HalfEdgeVertex {
     Vertex vertex;
-    Index outHalfEdge;
+    Index outHalfEdge = InvalidIndex;
 };
 
 struct HalfEdge {
-    Index targetVertex;
-    Index leftFace;
-    Index nextHalfEdge;
-    Index prevHalfEdge;
+    Index targetVertex = InvalidIndex;
+    Index leftFace = InvalidIndex;
+    Index nextHalfEdge = InvalidIndex;
+    Index prevHalfEdge = InvalidIndex;
     std::optional<Index> twinHalfEdge;
 };
 

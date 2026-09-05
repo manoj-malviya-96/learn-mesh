@@ -271,8 +271,12 @@ void simplifyMesh(HalfEdgeMesh& mesh, const SimplifyOptions& options) {
             collapseQueue.push(evaluateCollapse(mesh, he, quadrics));
     }
 
+    const Index targetTriangles = options.targetTriangles > 0
+        ? options.targetTriangles
+        : static_cast<Index>(options.reduceFactor * static_cast<double>(numTriangles));
+
     Index activeTriangles = numTriangles;
-    while (!collapseQueue.empty() && activeTriangles > options.targetTriangles) {
+    while (!collapseQueue.empty() && activeTriangles > targetTriangles) {
         const CollapseCandidate candidate = collapseQueue.top();
         collapseQueue.pop();
 

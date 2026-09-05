@@ -6,6 +6,7 @@
 namespace Mesh {
 
 using Index = std::size_t;
+constexpr Index InvalidIndex = std::numeric_limits<Index>::max();
 constexpr Index NumEdgesOrVerticesInATriangle = 3;
 using Vertex = std::array<float, NumEdgesOrVerticesInATriangle>;
 using Triangle = std::array<Index, NumEdgesOrVerticesInATriangle>;

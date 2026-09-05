@@ -28,16 +28,16 @@ bool buildHalfEdgesForTriangle(
     std::vector<HalfEdgeVertex>& vertices,
     EdgeMap& edgeMap
 ) {
-    const Index lastHalfEdge = halfEdges.size();
+    const Index heBase = fi * NumEdgesOrVerticesInATriangle;
     for (Index e = 0; e < NumEdgesOrVerticesInATriangle; ++e) {
         const Index src = tri[e];
         const Index dst = tri[(e + 1) % NumEdgesOrVerticesInATriangle];
-        const Index newHalfEdge = lastHalfEdge + e;
+        const Index newHalfEdge = heBase + e;
 
         halfEdges[newHalfEdge] = HalfEdge{
             .targetVertex = dst,
             .leftFace = fi,
-            .nextHalfEdge = lastHalfEdge + (e + 1) % NumEdgesOrVerticesInATriangle,
+            .nextHalfEdge = heBase + (e + 1) % NumEdgesOrVerticesInATriangle,
         };
         vertices[src].outHalfEdge = newHalfEdge;
         // Check if an edge already exists in the map, which would indicate a non-manifold edge. We should surface this
@@ -92,8 +92,8 @@ Boundary edges — twin = InvalidIndex are valid; it means the mesh has a border
 HalfEdgeMesh::HalfEdgeMesh(const TriMesh& triMesh) {
     if (triMesh.empty())
         return;
-    this->m_triangles.reserve(triMesh.numTriangles());
-    this->m_halfEdges.reserve(3 * triMesh.numTriangles());
+    this->m_triangles.resize(triMesh.numTriangles());
+    this->m_halfEdges.resize(NumEdgesOrVerticesInATriangle * triMesh.numTriangles());
 
     // Simply copy
     this->m_vertices = std::invoke([&triMesh] {
@@ -106,7 +106,7 @@ HalfEdgeMesh::HalfEdgeMesh(const TriMesh& triMesh) {
     EdgeMap edgeMap;
     edgeMap.reserve(triMesh.numVertices());
     for (Index i = 0; i < triMesh.numTriangles(); ++i) {
-        this->m_triangles[i].halfEdge = m_halfEdges.size();
+        this->m_triangles[i].halfEdge = i * NumEdgesOrVerticesInATriangle;
         if (const auto check = buildHalfEdgesForTriangle(i, triMesh.getTriangle(i), m_halfEdges, m_vertices, edgeMap);
             !check) {
             throw std::runtime_error("Non-manifold edge detected in input mesh");
@@ -126,6 +126,7 @@ TriMesh HalfEdgeMesh::triMesh() const {
         const auto& he0 = m_halfEdges[tri.halfEdge];
         const auto& he1 = m_halfEdges[he0.nextHalfEdge];
         const auto& he2 = m_halfEdges[he1.nextHalfEdge];
+        mesh.addTriangle({he0.targetVertex, he1.targetVertex, he2.targetVertex});
     }
     return mesh;
 }
